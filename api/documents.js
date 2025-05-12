@@ -1,9 +1,31 @@
-import { Document, User } from '../mongodb-backend/models/schemas';
-import mongoose from 'mongoose';
-import multer from 'multer';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+const mongoose = require('mongoose');
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+
+// MongoDB Schema definitions
+const documentSchema = new mongoose.Schema({
+  file: String,
+  documentType: String,
+  userId: String,
+  fileName: String,
+  fileSize: Number,
+  mimeType: String,
+  uploadedAt: Date
+});
+
+const userSchema = new mongoose.Schema({
+  userId: String,
+  email: String,
+  role: String,
+  name: String,
+  documents: [mongoose.Schema.Types.ObjectId]
+});
+
+// Create models
+const Document = mongoose.model('Document', documentSchema);
+const User = mongoose.model('User', userSchema);
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -46,7 +68,7 @@ const connectDB = async () => {
   }
 };
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   try {
     // Connect to MongoDB
     await connectDB();
