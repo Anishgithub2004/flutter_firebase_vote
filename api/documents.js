@@ -46,6 +46,9 @@ const upload = multer({ storage: storage });
 // MongoDB connection handler
 const connectDB = async () => {
   try {
+    console.log('Attempting to connect to MongoDB...');
+    console.log('MongoDB URI:', process.env.MONGODB_URI ? 'URI is set' : 'URI is not set');
+    
     if (mongoose.connection.readyState === 0) {
       await mongoose.connect(process.env.MONGODB_URI, {
         useNewUrlParser: true,
@@ -60,7 +63,9 @@ const connectDB = async () => {
         retryWrites: true,
         w: 'majority'
       });
-      console.log('Connected to MongoDB');
+      console.log('Connected to MongoDB successfully');
+    } else {
+      console.log('Already connected to MongoDB');
     }
   } catch (error) {
     console.error('MongoDB connection error:', error);
@@ -70,11 +75,18 @@ const connectDB = async () => {
 
 module.exports = async function handler(req, res) {
   try {
+    console.log('API request received:', {
+      method: req.method,
+      url: req.url,
+      body: req.body,
+      files: req.files
+    });
+
     // Connect to MongoDB
     await connectDB();
 
-    // Handle upload route
-    if (req.url === '/upload' && req.method === 'POST') {
+    // Handle POST request for document upload
+    if (req.method === 'POST') {
       upload.single('file')(req, res, async (err) => {
         if (err) {
           console.error('Multer error:', err);
