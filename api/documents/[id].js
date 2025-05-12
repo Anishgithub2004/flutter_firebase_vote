@@ -51,8 +51,9 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Extract document ID from the URL path
-    const documentId = req.query.id || req.params.id;
+    // Get document ID from URL parameters
+    const documentId = req.params.id;
+    console.log('Request params:', req.params);
     console.log('Fetching document with ID:', documentId);
 
     if (!documentId) {
@@ -60,6 +61,15 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({
         success: false,
         error: 'Document ID is required'
+      });
+    }
+
+    // Validate MongoDB ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(documentId)) {
+      console.error('Invalid document ID format:', documentId);
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid document ID format'
       });
     }
 
@@ -78,19 +88,28 @@ module.exports = async function handler(req, res) {
       fileName: document.fileName
     });
 
-    res.json({
+    // Ensure all required fields are present
+    const response = {
       success: true,
       document: {
         id: document._id.toString(),
-        documentType: document.documentType,
-        userId: document.userId,
-        fileName: document.fileName,
-        fileSize: document.fileSize,
-        mimeType: document.mimeType,
-        uploadedAt: document.uploadedAt,
-        file: document.file
+        documentType: document.documentType || '',
+        userId: document.userId || '',
+        fileName: document.fileName || '',
+        fileSize: document.fileSize || 0,
+        mimeType: document.mimeType || '',
+        uploadedAt: document.uploadedAt || new Date(),
+        file: document.file || ''
       }
+    };
+
+    console.log('Sending response:', {
+      success: response.success,
+      documentId: response.document.id,
+      fileName: response.document.fileName
     });
+
+    res.json(response);
   } catch (error) {
     console.error('Error fetching document:', error);
     res.status(500).json({ 
