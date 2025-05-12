@@ -1,31 +1,53 @@
-import { Document } from '../mongodb-backend/models/schemas';
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 30000,
-  socketTimeoutMS: 45000,
-  connectTimeoutMS: 30000,
-  maxPoolSize: 10,
-  minPoolSize: 5,
-  maxIdleTimeMS: 30000,
-  waitQueueTimeoutMS: 30000,
-  retryWrites: true,
-  w: 'majority'
-}).then(() => {
-  console.log('Connected to MongoDB');
-}).catch(err => {
-  console.error('MongoDB connection error:', err);
+// MongoDB Schema definition
+const documentSchema = new mongoose.Schema({
+  file: String,
+  documentType: String,
+  userId: String,
+  fileName: String,
+  fileSize: Number,
+  mimeType: String,
+  uploadedAt: Date
 });
 
-export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+// Create model
+const Document = mongoose.model('Document', documentSchema);
 
+// MongoDB connection handler
+const connectDB = async () => {
   try {
+    if (mongoose.connection.readyState === 0) {
+      await mongoose.connect(process.env.MONGODB_URI, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+        serverSelectionTimeoutMS: 30000,
+        socketTimeoutMS: 45000,
+        connectTimeoutMS: 30000,
+        maxPoolSize: 10,
+        minPoolSize: 5,
+        maxIdleTimeMS: 30000,
+        waitQueueTimeoutMS: 30000,
+        retryWrites: true,
+        w: 'majority'
+      });
+      console.log('Connected to MongoDB');
+    }
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    throw error;
+  }
+};
+
+module.exports = async function handler(req, res) {
+  try {
+    // Connect to MongoDB
+    await connectDB();
+
+    if (req.method !== 'GET') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+
     const document = await Document.findById(req.query.id);
     if (!document) {
       return res.status(404).json({ error: 'Document not found' });
