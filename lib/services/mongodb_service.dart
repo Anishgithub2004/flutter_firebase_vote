@@ -4,8 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
 class MongoDBService {
-  // Update this with your computer's IP address when testing on mobile
-  static const String baseUrl = 'http://192.168.0.111:3000/api';
+  // Update this with your Vercel deployment URL
+  static const String baseUrl = 'https://flutter-firebase-vote.vercel.app';
 
   // Document types that match the MongoDB schema
   static const String aadharCardType = 'aadhar_card';
@@ -179,7 +179,7 @@ class MongoDBService {
       print('Fetching KYC document with ID: $documentId');
 
       final response = await http.get(
-        Uri.parse('$baseUrl/documents/$documentId'),
+        Uri.parse('$baseUrl/api/documents/$documentId'),
       );
 
       print('Response status: ${response.statusCode}');
@@ -187,17 +187,23 @@ class MongoDBService {
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
-        if (responseData['file'] == null) {
+        if (!responseData['success']) {
+          print('Error in response: ${responseData['error']}');
+          return null;
+        }
+
+        final document = responseData['document'];
+        if (document == null || document['file'] == null) {
           print('No file data found in response');
           return null;
         }
 
-        final base64String = responseData['file'];
+        final base64String = document['file'];
         final bytes = base64Decode(base64String);
 
         // Save to temporary file
         final tempDir = await getTemporaryDirectory();
-        final fileName = responseData['fileName'] ??
+        final fileName = document['fileName'] ??
             'document_${DateTime.now().millisecondsSinceEpoch}';
         final tempFile = File('${tempDir.path}/$fileName');
         await tempFile.writeAsBytes(bytes);
@@ -347,7 +353,7 @@ class MongoDBService {
   static Future<Map<String, dynamic>> checkKYCDocuments(String userId) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/documents/check-kyc/$userId'),
+        Uri.parse('$baseUrl/api/documents/check-kyc/$userId'),
         headers: {'Content-Type': 'application/json'},
       );
 
