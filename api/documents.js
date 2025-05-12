@@ -73,36 +73,16 @@ module.exports = async function handler(req, res) {
     // Connect to MongoDB
     await connectDB();
 
-    // Handle GET request
-    if (req.method === 'GET') {
-      try {
-        const documents = await Document.find({});
-        res.status(200).json({
-          success: true,
-          documents: documents.map(doc => ({
-            id: doc._id,
-            documentType: doc.documentType,
-            userId: doc.userId,
-            fileName: doc.fileName,
-            fileSize: doc.fileSize,
-            mimeType: doc.mimeType,
-            uploadedAt: doc.uploadedAt
-          }))
-        });
-        return;
-      } catch (error) {
-        console.error('Error fetching documents:', error);
-        res.status(500).json({ success: false, error: 'Failed to fetch documents' });
-        return;
-      }
-    }
-
-    // Handle POST request
-    if (req.method === 'POST') {
+    // Handle upload route
+    if (req.url === '/upload' && req.method === 'POST') {
       upload.single('file')(req, res, async (err) => {
         if (err) {
           console.error('Multer error:', err);
-          return res.status(500).json({ success: false, error: 'File upload error' });
+          return res.status(500).json({ 
+            success: false, 
+            error: 'File upload error',
+            details: err.message 
+          });
         }
 
         try {
@@ -111,7 +91,10 @@ module.exports = async function handler(req, res) {
 
           if (!file) {
             console.error('No file uploaded');
-            return res.status(400).json({ success: false, error: 'No file uploaded' });
+            return res.status(400).json({ 
+              success: false, 
+              error: 'No file uploaded' 
+            });
           }
 
           console.log('Processing document upload:', {
@@ -126,7 +109,11 @@ module.exports = async function handler(req, res) {
           const validDocumentTypes = ['aadhar_card', 'pan_card', 'voter_id', 'candidate_photo', 'voter_photo', 'admin_photo'];
           if (!validDocumentTypes.includes(documentType)) {
             console.error('Invalid document type:', documentType);
-            return res.status(400).json({ success: false, error: 'Invalid document type' });
+            return res.status(400).json({ 
+              success: false, 
+              error: 'Invalid document type',
+              details: `Valid types are: ${validDocumentTypes.join(', ')}`
+            });
           }
 
           // Read file as base64
@@ -150,49 +137,70 @@ module.exports = async function handler(req, res) {
           // Clean up uploaded file
           fs.unlinkSync(file.path);
 
-          try {
-            // Find or create user and update documents array
-            let user = await User.findOne({ userId: userId });
-            
-            if (!user) {
-              // Create new user if not exists
-              user = new User({
-                userId: userId,
-                email: `${userId}@temp.com`, // Temporary email
-                role: 'voter', // Default role
-                name: 'Unnamed User', // Default name
-                documents: [document._id]
-              });
-              await user.save();
-              console.log('Created new user:', user._id);
-            } else {
-              // Update existing user's documents array
-              user.documents.push(document._id);
-              await user.save();
-              console.log('Updated user documents:', user._id);
-            }
-          } catch (userError) {
-            console.error('Error updating user:', userError);
-            // Continue with the response even if user update fails
-          }
-
           res.status(201).json({
             success: true,
-            documentId: document._id,
+            document: {
+              id: document._id,
+              documentType: document.documentType,
+              userId: document.userId,
+              fileName: document.fileName,
+              fileSize: document.fileSize,
+              mimeType: document.mimeType,
+              uploadedAt: document.uploadedAt
+            },
             documentUrl: `/api/documents/${document._id}`
           });
         } catch (error) {
           console.error('Error uploading document:', error);
-          res.status(500).json({ success: false, error: 'Failed to upload document' });
+          res.status(500).json({ 
+            success: false, 
+            error: 'Failed to upload document',
+            details: error.message 
+          });
         }
       });
       return;
     }
 
+    // Handle GET request for all documents
+    if (req.method === 'GET') {
+      try {
+        const documents = await Document.find({});
+        res.status(200).json({
+          success: true,
+          documents: documents.map(doc => ({
+            id: doc._id,
+            documentType: doc.documentType,
+            userId: doc.userId,
+            fileName: doc.fileName,
+            fileSize: doc.fileSize,
+            mimeType: doc.mimeType,
+            uploadedAt: doc.uploadedAt
+          }))
+        });
+        return;
+      } catch (error) {
+        console.error('Error fetching documents:', error);
+        res.status(500).json({ 
+          success: false, 
+          error: 'Failed to fetch documents',
+          details: error.message 
+        });
+        return;
+      }
+    }
+
     // Handle unsupported methods
-    res.status(405).json({ success: false, error: 'Method not allowed' });
+    res.status(405).json({ 
+      success: false, 
+      error: 'Method not allowed' 
+    });
   } catch (error) {
     console.error('Server error:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error',
+      details: error.message 
+    });
   }
 } 

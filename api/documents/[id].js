@@ -45,21 +45,49 @@ module.exports = async function handler(req, res) {
     await connectDB();
 
     if (req.method !== 'GET') {
-      return res.status(405).json({ error: 'Method not allowed' });
+      return res.status(405).json({ 
+        success: false,
+        error: 'Method not allowed' 
+      });
     }
 
-    const document = await Document.findById(req.query.id);
+    const documentId = req.params.id;
+    console.log('Fetching document with ID:', documentId);
+
+    const document = await Document.findById(documentId);
     if (!document) {
-      return res.status(404).json({ error: 'Document not found' });
+      console.error('Document not found:', documentId);
+      return res.status(404).json({ 
+        success: false,
+        error: 'Document not found' 
+      });
     }
+
+    console.log('Document found:', {
+      id: document._id,
+      type: document.documentType,
+      fileName: document.fileName
+    });
 
     res.json({
       success: true,
-      file: document.file,
-      fileName: document.fileName
+      document: {
+        id: document._id,
+        documentType: document.documentType,
+        userId: document.userId,
+        fileName: document.fileName,
+        fileSize: document.fileSize,
+        mimeType: document.mimeType,
+        uploadedAt: document.uploadedAt,
+        file: document.file
+      }
     });
   } catch (error) {
     console.error('Error fetching document:', error);
-    res.status(500).json({ error: 'Failed to fetch document' });
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch document',
+      details: error.message 
+    });
   }
 } 
