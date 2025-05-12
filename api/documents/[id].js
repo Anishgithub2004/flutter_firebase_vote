@@ -86,10 +86,26 @@ module.exports = async function handler(req, res) {
     }
 
     console.log('Searching for document in MongoDB...');
+    
+    // First, check if the collection exists and has documents
+    const collections = await mongoose.connection.db.listCollections().toArray();
+    console.log('Available collections:', collections.map(c => c.name));
+    
+    const documentCount = await Document.countDocuments();
+    console.log('Total documents in collection:', documentCount);
+    
+    // Try to find the document
     const document = await Document.findById(documentId);
     
     if (!document) {
       console.error('Document not found:', documentId);
+      // List a few documents to help debug
+      const sampleDocs = await Document.find().limit(3);
+      console.log('Sample documents in collection:', sampleDocs.map(doc => ({
+        id: doc._id,
+        type: doc.documentType,
+        fileName: doc.fileName
+      })));
       return res.status(404).json({ 
         success: false,
         error: 'Document not found' 
