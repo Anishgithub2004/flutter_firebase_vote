@@ -51,8 +51,17 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const documentId = req.params.id;
+    // Extract document ID from the URL path
+    const documentId = req.query.id || req.params.id;
     console.log('Fetching document with ID:', documentId);
+
+    if (!documentId) {
+      console.error('No document ID provided');
+      return res.status(400).json({
+        success: false,
+        error: 'Document ID is required'
+      });
+    }
 
     const document = await Document.findById(documentId);
     if (!document) {
@@ -72,7 +81,7 @@ module.exports = async function handler(req, res) {
     res.json({
       success: true,
       document: {
-        id: document._id,
+        id: document._id.toString(),
         documentType: document.documentType,
         userId: document.userId,
         fileName: document.fileName,
