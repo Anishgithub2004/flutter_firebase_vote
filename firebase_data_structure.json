@@ -1,0 +1,76 @@
+{
+  "collections": {
+    "users": {
+      "documentId": "auto",
+      "fields": {
+        "email": "string",
+        "role": "string",
+        "isVerified": "boolean",
+        "createdAt": "timestamp",
+        "verifiedAt": "timestamp",
+        "aadhaarNumber": "string",
+        "panNumber": "string",
+        "voterId": "string",
+        "name": "string",
+        "address": "string",
+        "phone": "string",
+        "biometricData": "string"
+      }
+    },
+    "elections": {
+      "documentId": "auto",
+      "fields": {
+        "title": "string",
+        "description": "string",
+        "startDate": "timestamp",
+        "endDate": "timestamp",
+        "isActive": "boolean",
+        "createdAt": "timestamp",
+        "totalVotes": "number",
+        "status": "string"
+      }
+    },
+    "candidates": {
+      "documentId": "auto",
+      "fields": {
+        "name": "string",
+        "party": "string",
+        "photoUrl": "string",
+        "manifesto": "string",
+        "electionId": "string",
+        "voteCount": "number",
+        "createdAt": "timestamp"
+      }
+    },
+    "votes": {
+      "documentId": "auto",
+      "fields": {
+        "userId": "string",
+        "electionId": "string",
+        "candidateId": "string",
+        "timestamp": "timestamp",
+        "isVerified": "boolean",
+        "biometricVerified": "boolean"
+      }
+    },
+    "voting_history": {
+      "documentId": "auto",
+      "fields": {
+        "userId": "string",
+        "electionId": "string",
+        "voteId": "string",
+        "timestamp": "timestamp",
+        "status": "string"
+      }
+    },
+    "rejected_users": {
+      "documentId": "auto",
+      "fields": {
+        "email": "string",
+        "reason": "string",
+        "rejectedAt": "timestamp",
+        "originalData": "map"
+      }
+    }
+  }
+} 

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "63037506767",
+    "project_id": "e-votex-app",
+    "storage_bucket": "e-votex-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:63037506767:android:95d7cf22334fda6906e3ba",
+        "android_client_info": {
+          "package_name": "com.example.votexapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWjYsyq8CZ6fn_ZwnHxdepchFHiI1ttOE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

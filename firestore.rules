@@ -1,0 +1,198 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isVerifiedVoter() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isVerified == true;
+    }
+    
+    function isElectionActive(electionId) {
+      let election = get(/databases/$(database)/documents/elections/$(electionId));
+      return election.data.isActive == true;
+    }
+    
+    function hasNotVoted(electionId) {
+      let election = get(/databases/$(database)/documents/elections/$(electionId));
+      return !(request.auth.uid in election.data.votedUserIds);
+    }
+
+    function hasRemainingAttempts(electionId) {
+      let attemptPath = /databases/$(database)/documents/vote_attempts/$(request.auth.uid);
+      let attempts = exists(attemptPath) ? 
+        get(attemptPath).data.attempts[electionId] : 0;
+      return (attempts == null) || (attempts < 3);
+    }
+
+    function hasActiveProctoringSession() {
+      let sessionPath = /databases/$(database)/documents/proctoring_sessions/$(request.auth.uid);
+      return exists(sessionPath) && 
+        get(sessionPath).data.status == 'active';
+    }
+
+    // Validation functions
+    function isValidAadharNumber(aadharNo) {
+      return aadharNo == null || 
+        (aadharNo is string && 
+         aadharNo.replace(" ", "").matches('^[0-9]{12}$'));
+    }
+
+    function isValidPANNumber(panNo) {
+      return panNo == null || 
+        (panNo is string && 
+         panNo.matches('^[A-Z]{5}[0-9]{4}[A-Z]{1}$'));
+    }
+
+    function isValidVoterID(voterID) {
+      return voterID == null || 
+        (voterID is string && 
+         voterID.matches('^[A-Z]{3}[0-9]{7}$'));
+    }
+
+    // Allow read/write access to all users under any path
+    // that is prefixed by a user ID
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Elections collection
+    match /elections/{electionId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAuthenticated() &&
+        (isAdmin() || 
+        (isVerifiedVoter() &&
+         hasValidVoterBiometric() &&
+         hasNotVoted(electionId) &&
+         hasRemainingAttempts(electionId) &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votedUserIds', 'totalVotes', 'lastUpdated']) &&
+         request.resource.data.votedUserIds.hasOnly(resource.data.votedUserIds.concat([request.auth.uid])) &&
+         request.resource.data.totalVotes == resource.data.totalVotes + 1));
+      
+      // Allow voters to update their vote status
+      match /voters/{voterId} {
+        allow read: if request.auth != null;
+        allow update: if request.auth != null && request.auth.uid == voterId;
+      }
+    }
+
+    // Vote attempts collection
+    match /vote_attempts/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Candidates collection
+    match /candidates/{candidateId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAuthenticated() &&
+        (isAdmin() || 
+        (isVerifiedVoter() &&
+         hasValidVoterBiometric() &&
+         hasNotVoted(resource.data.electionId) &&
+         hasRemainingAttempts(resource.data.electionId) &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['voteCount', 'lastUpdated']) &&
+         request.resource.data.voteCount == resource.data.voteCount + 1));
+    }
+
+    // Election results collection
+    match /election_results/{resultId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin();
+      allow delete: if false; // Results cannot be deleted
+    }
+
+    // Helper functions
+    function hasValidBiometric() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/biometric_data/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/biometric_data/$(request.auth.uid)).data.isVerified == true;
+    }
+    
+    function isAdminWithBiometric() {
+      return isAdmin() && hasValidBiometric();
+    }
+
+    // Function to check if user is a voter
+    function isVoter() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'voter';
+    }
+
+    // Function to check if voter has valid biometric
+    function hasValidVoterBiometric() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/voter_biometric_data/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/voter_biometric_data/$(request.auth.uid)).data.isVerified == true;
+    }
+
+    // User voting history rules
+    match /voting_history/{historyId} {
+      allow read: if isAuthenticated() && 
+        (request.auth.uid == resource.data.userId || isAdmin());
+      allow create: if isAuthenticated() && 
+        request.auth.uid == request.resource.data.userId;
+      allow update, delete: if false;
+    }
+
+    // Biometric data rules
+    match /biometric_data/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create, update: if isAuthenticated() && request.auth.uid == userId;
+      allow delete: if isAdminWithBiometric();
+    }
+
+    // Voter fingerprints rules
+    match /voter_fingerprints/{userId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      allow read: if isAdmin();
+    }
+
+    // Function to check if user has no active session
+    function hasNoActiveSession(userId) {
+      let activeSessions = getAfter(/databases/$(database)/documents/proctoring_sessions)
+        .where('userId', '==', userId)
+        .where('status', '==', 'active').size();
+      return activeSessions == 0;
+    }
+
+    // Proctoring sessions collection
+    match /proctoring_sessions/{sessionId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      allow delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+    }
+
+    // Voter biometric data rules
+    match /voter_biometric_data/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create, update: if isAuthenticated() && request.auth.uid == userId;
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+} 

@@ -1,0 +1,12 @@
+specVersion: "v1beta"
+serviceId: "flutter_firebase_vote"
+location: "us-central1"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "fdcdb"
+      cloudSql:
+        instanceId: "flutter_firebase_vote-fdc"
+      # schemaValidation: "COMPATIBLE"
+connectorDirs: ["./connector"]
