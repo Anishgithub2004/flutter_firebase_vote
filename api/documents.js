@@ -85,8 +85,8 @@ module.exports = async function handler(req, res) {
     // Connect to MongoDB
     await connectDB();
 
-    // Handle POST request for document upload
-    if (req.method === 'POST') {
+    // Handle POST request for document upload (both /upload and root path)
+    if (req.method === 'POST' && (req.url === '/upload' || req.url === '/')) {
       upload.single('file')(req, res, async (err) => {
         if (err) {
           console.error('Multer error:', err);

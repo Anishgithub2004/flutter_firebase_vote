@@ -17,6 +17,9 @@ const Document = mongoose.model('Document', documentSchema);
 // MongoDB connection handler
 const connectDB = async () => {
   try {
+    console.log('Attempting to connect to MongoDB...');
+    console.log('MongoDB URI:', process.env.MONGODB_URI ? 'URI is set' : 'URI is not set');
+    
     if (mongoose.connection.readyState === 0) {
       await mongoose.connect(process.env.MONGODB_URI, {
         useNewUrlParser: true,
@@ -31,7 +34,9 @@ const connectDB = async () => {
         retryWrites: true,
         w: 'majority'
       });
-      console.log('Connected to MongoDB');
+      console.log('Connected to MongoDB successfully');
+    } else {
+      console.log('Already connected to MongoDB');
     }
   } catch (error) {
     console.error('MongoDB connection error:', error);
@@ -41,6 +46,13 @@ const connectDB = async () => {
 
 module.exports = async function handler(req, res) {
   try {
+    console.log('API request received:', {
+      method: req.method,
+      url: req.url,
+      params: req.params,
+      query: req.query
+    });
+
     // Connect to MongoDB
     await connectDB();
 
@@ -53,7 +65,6 @@ module.exports = async function handler(req, res) {
 
     // Get document ID from URL parameters
     const documentId = req.params.id;
-    console.log('Request params:', req.params);
     console.log('Fetching document with ID:', documentId);
 
     if (!documentId) {
@@ -73,7 +84,9 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    console.log('Searching for document in MongoDB...');
     const document = await Document.findById(documentId);
+    
     if (!document) {
       console.error('Document not found:', documentId);
       return res.status(404).json({ 
@@ -85,7 +98,8 @@ module.exports = async function handler(req, res) {
     console.log('Document found:', {
       id: document._id,
       type: document.documentType,
-      fileName: document.fileName
+      fileName: document.fileName,
+      hasFile: !!document.file
     });
 
     // Ensure all required fields are present
@@ -106,7 +120,8 @@ module.exports = async function handler(req, res) {
     console.log('Sending response:', {
       success: response.success,
       documentId: response.document.id,
-      fileName: response.document.fileName
+      fileName: response.document.fileName,
+      hasFile: !!response.document.file
     });
 
     res.json(response);
