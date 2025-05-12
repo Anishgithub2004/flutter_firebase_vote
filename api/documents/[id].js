@@ -63,9 +63,10 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Get document ID from URL parameters
-    const documentId = req.params.id;
-    console.log('Fetching document with ID:', documentId);
+    // Extract document ID from URL path
+    const urlParts = req.url.split('/');
+    const documentId = urlParts[urlParts.length - 1];
+    console.log('Extracted document ID from URL:', documentId);
 
     if (!documentId) {
       console.error('No document ID provided');
